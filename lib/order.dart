@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:input_quantity/input_quantity.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_pos_app/main.dart';
+import 'package:flutter_pos_app/models/menu_item.dart';
+import 'package:flutter_pos_app/models/order_data.dart';
+import 'package:flutter_pos_app/services/format_service.dart';
+import 'package:shortid/shortid.dart';
 import 'components/topmenu.dart';
+import 'package:input_quantity/input_quantity.dart';
 
 class Checkout extends StatefulWidget {
-  const Checkout({super.key});
+  const Checkout({Key? key}) : super(key: key);
 
   @override
   State<Checkout> createState() => _CheckoutState();
@@ -11,18 +17,106 @@ class Checkout extends StatefulWidget {
 
 class _CheckoutState extends State<Checkout> {
   double totalValue = 0;
+  List<MenuItem> menuItems = [];
+  List<Widget> menus = [];
+  Dio dio = Dio();
+  final _nameController = TextEditingController();
 
-  void updateTotal(val, price) {
+  void calculateTotal() {
+    double total = 0.0;
+
+    for (var menuItem in menuItems) {
+      total += menuItem.quantity * menuItem.price;
+    }
+
+    setState(() {
+      totalValue = total;
+    });
+  }
+
+  Future<void> _submitForm(BuildContext context) async {
+    // Validate form fields
+    if (_nameController.text.isEmpty) {
+      // Show an error message or handle validation as needed
+      return;
+    }
+
+    // Create Dio instance
+    final dio = Dio();
+
+    menuItems.removeWhere((data) => data.quantity == 0);
+
+    OrderData orderData = OrderData(
+      kodeBeli: shortid.generate(),
+      tanggal: DateTime.now(),
+      atasNama: _nameController.text,
+      totalHarga: totalValue,
+      menus: menuItems,
+    );
+
     try {
-      double parsedValue = double.parse(val);
-      double parsedPrice = double.parse(price);
+      // Make POST request
+      final response = await dio.post(
+        'http://localhost:3000/api/orders',
+        data: orderData.toJson(),
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
 
-      setState(() {
-        totalValue = totalValue + (parsedValue * parsedPrice);
-      });
-    } catch (e) {
-      print("Error parsing string to double: $e");
-      // Handle the error accordingly, you might want to show a message or log it
+      // Check the response status
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainPage(
+              movePage: "History",
+            ),
+          ),
+        );
+      } else {
+        // Handle other response statuses if needed
+        print('Unexpected response status: ${response.statusCode}');
+      }
+    } catch (error) {
+      // Handle the error
+      print('Error: $error');
+    }
+  }
+
+  // Function to fetch data from the API
+  Future<void> fetchData() async {
+    try {
+      // Make a GET request using Dio
+      Response response = await dio.get('http://localhost:3000/api/items');
+
+      // Assuming the response data is a list of menu items
+      List<dynamic> responseData = response.data;
+
+      // Create _item widgets based on the fetched data
+      menus = responseData.map((itemData) {
+        return _itemOrder(
+          id: itemData['id'],
+          image: itemData['image'],
+          title: itemData['title'],
+          qty: 0.toString(),
+          price: double.parse(itemData['price']),
+        );
+      }).toList();
+
+      menuItems = responseData.map((itemData) {
+        return MenuItem(
+          menuId: itemData['id'],
+          menuName: itemData['title'],
+          quantity: 0,
+          price: double.parse(itemData['price']),
+        );
+      }).toList();
+
+      calculateTotal();
+    } catch (error) {
+      // Handle the error
+      print('Error fetching data: $error');
     }
   }
 
@@ -38,42 +132,32 @@ class _CheckoutState extends State<Checkout> {
             action: Container(),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: ListView(
-              children: [
-                _itemOrder(
-                  image: 'items/1.png',
-                  title: 'Orginal Burger',
-                  qty: '2',
-                  price: 5.99,
+          menuItems.isEmpty
+              ? FutureBuilder(
+                  future: fetchData(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container(
+                        height: MediaQuery.of(context).size.height * 0.4,
+                        width: MediaQuery.of(context).size.width,
+                        child: Container(),
+                      );
+                    } else if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    } else {
+                      return Expanded(
+                        child: ListView(
+                          children: menus,
+                        ),
+                      );
+                    }
+                  },
+                )
+              : Expanded(
+                  child: ListView(
+                    children: menus,
+                  ),
                 ),
-                _itemOrder(
-                  image: 'items/2.png',
-                  title: 'Double Burger',
-                  qty: '3',
-                  price: 10.99,
-                ),
-                _itemOrder(
-                  image: 'items/6.png',
-                  title: 'Special Black Burger',
-                  qty: '2',
-                  price: 8.00,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-              ],
-            ),
-          ),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -95,16 +179,17 @@ class _CheckoutState extends State<Checkout> {
                     color: const Color.fromARGB(137, 92, 92, 92),
                   ),
                   child: TextField(
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    controller: _nameController,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
                     decoration: InputDecoration(
-                      contentPadding:
-                          const EdgeInsets.only(bottom: 6, left: 12),
+                      contentPadding: EdgeInsets.only(bottom: 6, left: 12),
                       hintText: 'Atas Nama',
-                      hintStyle:
-                          const TextStyle(color: Colors.white54, fontSize: 14),
+                      hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
                       border: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                            color: Colors.white), // Set white border
+                        borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -136,14 +221,15 @@ class _CheckoutState extends State<Checkout> {
                 const SizedBox(height: 15),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    onPrimary: Colors.white,
-                    primary: Colors.deepOrange,
+                    backgroundColor: Colors.deepOrange,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    _submitForm(context);
+                  },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [SizedBox(width: 6), Text('Pesan')],
@@ -158,11 +244,18 @@ class _CheckoutState extends State<Checkout> {
   }
 
   Widget _itemOrder({
+    required String id,
     required String image,
     required String title,
     required String qty,
     required double price,
   }) {
+    int initValue = 0;
+    if (menuItems.isNotEmpty) {
+      MenuItem existingItem = menuItems.firstWhere((item) => item.menuId == id);
+      initValue = existingItem.quantity;
+    }
+
     return Container(
       padding: const EdgeInsets.all(8),
       margin: const EdgeInsets.only(bottom: 10),
@@ -178,7 +271,7 @@ class _CheckoutState extends State<Checkout> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               image: DecorationImage(
-                image: AssetImage(image),
+                image: NetworkImage(image),
                 fit: BoxFit.cover,
               ),
             ),
@@ -197,7 +290,7 @@ class _CheckoutState extends State<Checkout> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Rp $price',
+                  formatCurrency(price),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -215,11 +308,19 @@ class _CheckoutState extends State<Checkout> {
             ),
             child: InputQty(
               maxVal: 10,
-              initVal: 0,
+              initVal: initValue,
               minVal: 0,
               steps: 1,
               onQtyChanged: (val) {
-                updateTotal(val.toString(), price.toString());
+                setState(() {
+                  for (int i = 0; i < menuItems.length; i++) {
+                    if (menuItems[i].menuId == id) {
+                      menuItems[i].quantity = val;
+                      return;
+                    }
+                  }
+                });
+                calculateTotal();
               },
             ),
           )

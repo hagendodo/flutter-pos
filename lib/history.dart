@@ -1,5 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/main.dart';
+import 'package:flutter_pos_app/models/menu_item.dart';
+import 'package:flutter_pos_app/models/order_data.dart';
+import 'package:flutter_pos_app/services/format_service.dart';
 import 'components/topmenu.dart';
 
 class History extends StatefulWidget {
@@ -11,6 +15,41 @@ class History extends StatefulWidget {
 
 class _HistoryState extends State<History> {
   double totalValue = 0;
+  Dio dio = Dio();
+  List<Widget> menus = [];
+
+  // Function to fetch data from the API
+  Future<void> fetchData() async {
+    try {
+      // Make a GET request using Dio
+      Response response = await dio.get('http://localhost:3000/api/orders');
+
+      // Assuming the response data is a list of menu items
+      List<dynamic> responseData = response.data;
+
+      // Create _item widgets based on the fetched data
+      menus = responseData.map((itemData) {
+        OrderData orderData = OrderData(
+          tanggal: DateTime.parse(itemData['tanggal']),
+          kodeBeli: itemData['kodeBeli'],
+          atasNama: itemData['atasNama'],
+          totalHarga: double.parse(itemData['totalHarga'].toString()),
+          menus: convertMenus(itemData['menus']),
+        );
+
+        return _itemOrder(
+          tanggal: orderData.tanggal.toString(),
+          kodeBeli: orderData.kodeBeli,
+          title: orderData.atasNama,
+          price: orderData.totalHarga,
+          order: orderData,
+        );
+      }).toList();
+    } catch (error) {
+      // Handle the error
+      print('Error fetching data: $error');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,41 +63,25 @@ class _HistoryState extends State<History> {
             action: Container(),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: ListView(
-              children: [
-                _itemOrder(
-                  image: 'items/1.png',
-                  title: 'Orginal Burger',
-                  qty: '2',
-                  price: 5.99,
-                ),
-                _itemOrder(
-                  image: 'items/2.png',
-                  title: 'Double Burger',
-                  qty: '3',
-                  price: 10.99,
-                ),
-                _itemOrder(
-                  image: 'items/6.png',
-                  title: 'Special Black Burger',
-                  qty: '2',
-                  price: 8.00,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-              ],
-            ),
+          FutureBuilder(
+            future: fetchData(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Container(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  width: MediaQuery.of(context).size.width,
+                  child: CircularProgressIndicator(),
+                );
+              } else if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              } else {
+                return Expanded(
+                  child: ListView(
+                    children: menus,
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -66,10 +89,11 @@ class _HistoryState extends State<History> {
   }
 
   Widget _itemOrder({
-    required String image,
+    required String tanggal,
+    required String kodeBeli,
     required String title,
-    required String qty,
     required double price,
+    required OrderData order,
   }) {
     return Container(
       padding: const EdgeInsets.all(8),
@@ -85,14 +109,14 @@ class _HistoryState extends State<History> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Kode Beli : XXX",
+                  "Kode Beli : $kodeBeli",
                   style: const TextStyle(
                     fontSize: 15,
                     color: Colors.white,
                   ),
                 ),
                 Text(
-                  "Tanggal: 15-06-2023",
+                  "Tanggal: ${formatDateString(tanggal)}",
                   style: const TextStyle(
                     fontSize: 15,
                     color: Colors.white54,
@@ -100,7 +124,7 @@ class _HistoryState extends State<History> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Atas Nama $title',
+                  '$title',
                   style: const TextStyle(
                     fontSize: 15,
                     color: Colors.white,
@@ -108,7 +132,7 @@ class _HistoryState extends State<History> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Rp $price',
+                  formatCurrency(price),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -127,6 +151,7 @@ class _HistoryState extends State<History> {
                   MaterialPageRoute(
                       builder: (context) => MainPage(
                             movePage: "DetailHistory",
+                            menuDetail: order,
                           )),
                 );
               },

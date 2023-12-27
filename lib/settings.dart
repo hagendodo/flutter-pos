@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/components/topmenu.dart';
+import 'package:flutter_pos_app/main.dart';
 
 class Settings extends StatefulWidget {
   @override
@@ -11,7 +12,33 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext context) {
     return Column(children: [
       TopMenuWidget(
-          title: 'POS BENSU', subTitle: 'Cabang ABC', action: Container()),
+        title: 'POS BENSU',
+        subTitle: 'Cabang ABC',
+        action: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const MainPage(
+                          movePage: "Settings",
+                        )),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              primary: Colors.deepOrange, // Button color
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  "Manage Accounts",
+                  selectionColor: Colors.white,
+                )
+              ],
+            ),
+          ),
+        ]),
+      ),
       Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),

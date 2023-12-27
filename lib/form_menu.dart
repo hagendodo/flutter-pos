@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_pos_app/components/topmenu.dart';
@@ -12,6 +13,9 @@ class FormMenu extends StatefulWidget {
 class _FormMenuState extends State<FormMenu> {
   File? _image;
   final ImagePicker _picker = ImagePicker();
+
+  final _nameController = TextEditingController();
+  final _priceController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +88,7 @@ class _FormMenuState extends State<FormMenu> {
                 textAlign: TextAlign.left,
               ),
               TextField(
+                controller: _nameController,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'xxxx',
@@ -105,6 +110,7 @@ class _FormMenuState extends State<FormMenu> {
                 textAlign: TextAlign.left,
               ),
               TextField(
+                controller: _priceController,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'Rp. xxx',
@@ -139,18 +145,7 @@ class _FormMenuState extends State<FormMenu> {
                 ),
               ),
               SizedBox(height: 16),
-              _image != null
-                  ? Image.file(
-                      _image!,
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
-                    )
-                  : Text(
-                      'No image selected.',
-                      style: TextStyle(color: Colors.white),
-                      textAlign: TextAlign.left,
-                    ),
+              //buildImageWidget(),
               const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -158,7 +153,8 @@ class _FormMenuState extends State<FormMenu> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // Perform the form submission logic here
+                      _submitForm();
+                      print("heeh");
                     },
                     child: Text('Simpan'),
                     style: ElevatedButton.styleFrom(
@@ -175,6 +171,32 @@ class _FormMenuState extends State<FormMenu> {
     ]);
   }
 
+  Widget buildImageWidget() {
+    if (_image != null) {
+      // For mobile (Android and iOS), use Image.file
+      return Image.file(
+        _image!,
+        height: 100,
+        width: 100,
+        fit: BoxFit.cover,
+      );
+    } else {
+      // For web, use Image.network
+      return _image != null
+          ? Image.network(
+              'your_image_url', // Replace with the actual image URL or Firebase Storage URL
+              height: 100,
+              width: 100,
+              fit: BoxFit.cover,
+            )
+          : const Text(
+              'No image selected.',
+              style: TextStyle(color: Colors.white),
+              textAlign: TextAlign.left,
+            );
+    }
+  }
+
   Future<void> _getImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
@@ -183,5 +205,50 @@ class _FormMenuState extends State<FormMenu> {
         _image = File(pickedFile.path);
       }
     });
+  }
+
+  // Future<void> _getImage() async {
+  //   FilePickerResult? result = await FilePicker.platform.pickFiles(
+  //     type: FileType.image,
+  //     allowMultiple: false,
+  //   );
+  //   setState(() {
+  //     if (result != null && result.files.isNotEmpty) {
+  //       // For web, you get a list of files. Pick the first one.
+  //       _image = File(result.files.first.path!);
+  //     }
+  //   });
+  // }
+
+  Future<void> _submitForm() async {
+    // Validate form fields
+    if (_nameController.text.isEmpty || _priceController.text.isEmpty) {
+      // Show an error message or handle validation as needed
+      return;
+    }
+
+    // Create Dio instance
+    final dio = Dio();
+
+    // Create FormData
+    final formData = FormData.fromMap({
+      'name': _nameController.text,
+      'price': _priceController.text,
+      'image': await MultipartFile.fromFile(_image!.path),
+    });
+
+    try {
+      // Make POST request
+      final response = await dio.post(
+        'http://localhost:3000/api/items', // Replace with your actual API endpoint
+        data: formData,
+      );
+
+      // Handle the response as needed
+      print(response.data);
+    } catch (error) {
+      // Handle the error
+      print('Error: $error');
+    }
   }
 }

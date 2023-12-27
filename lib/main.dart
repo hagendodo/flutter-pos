@@ -3,6 +3,7 @@ import 'package:flutter_pos_app/detail_history.dart';
 import 'package:flutter_pos_app/form_menu.dart';
 import 'package:flutter_pos_app/history.dart';
 import 'package:flutter_pos_app/login.dart';
+import 'package:flutter_pos_app/models/order_data.dart';
 import 'package:flutter_pos_app/order.dart';
 import 'package:flutter_pos_app/home.dart';
 import 'package:flutter_pos_app/register.dart';
@@ -31,18 +32,23 @@ class MyApp extends StatelessWidget {
 
 class MainPage extends StatefulWidget {
   final String movePage;
+  final OrderData? menuDetail;
 
-  const MainPage({Key? key, required this.movePage}) : super(key: key);
+  const MainPage({Key? key, required this.movePage, this.menuDetail})
+      : super(key: key);
 
   @override
-  State<MainPage> createState() => _MainPageState(movePage: movePage);
+  State<MainPage> createState() =>
+      _MainPageState(movePage: movePage, menuDetail: menuDetail);
 }
 
 class _MainPageState extends State<MainPage> {
   String pageActive = "Login";
+  OrderData? detailMenu;
 
-  _MainPageState({required String movePage}) {
+  _MainPageState({required String movePage, OrderData? menuDetail}) {
     pageActive = movePage;
+    detailMenu = menuDetail;
   }
 
   _pageView() {
@@ -60,7 +66,7 @@ class _MainPageState extends State<MainPage> {
       case 'History':
         return History();
       case 'DetailHistory':
-        return DetailHistory();
+        return DetailHistory(itemMenu: detailMenu);
       case 'Report':
         return Report();
       case 'Settings':

@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/main.dart';
+import 'package:flutter_pos_app/services/format_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -9,120 +11,84 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final Dio dio = Dio();
+  List<Widget> menuItems = [];
+
   @override
   Widget build(BuildContext context) {
     bool isMobile = MediaQuery.of(context).size.width < 1200;
     bool isPC = MediaQuery.of(context).size.width >= 1200;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          flex: 20,
-          child: Column(
+
+    return FutureBuilder(
+      future: fetchData(), // Assuming fetchData returns a Future<List<dynamic>>
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: MediaQuery.of(context).size.height,
+            child: CircularProgressIndicator(),
+          );
+        } else if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        } else {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                child: _topMenu(
-                  title: 'Point Of Sale',
-                  subTitle: 'Cabang X',
-                  action: _search(),
-                ),
-              ),
               Expanded(
-                child: GridView.count(
-                  crossAxisCount: isMobile ? 2 : 3,
-                  childAspectRatio: isPC ? (2 / 1.4) : (1 / 1.4),
+                flex: 20,
+                child: Column(
                   children: [
-                    _item(
-                      image: 'items/1.png',
-                      title: 'Original Burger',
-                      price: 'Rp 5.99',
-                      item: '11 item',
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      child: _topMenu(
+                        title: 'Point Of Sale',
+                        subTitle: 'Cabang X',
+                        action: _search(),
+                      ),
                     ),
-                    _item(
-                      image: 'items/2.png',
-                      title: 'Double Burger',
-                      price: 'Rp 10.99',
-                      item: '10 item',
-                    ),
-                    _item(
-                      image: 'items/3.png',
-                      title: 'Cheese Burger',
-                      price: 'Rp 6.99',
-                      item: '7 item',
-                    ),
-                    _item(
-                      image: 'items/4.png',
-                      title: 'Double Cheese Burger',
-                      price: 'Rp 12.99',
-                      item: '20 item',
-                    ),
-                    _item(
-                      image: 'items/5.png',
-                      title: 'Spicy Burger',
-                      price: 'Rp 7.39',
-                      item: '12 item',
-                    ),
-                    _item(
-                      image: 'items/6.png',
-                      title: 'Special Black Burger',
-                      price: 'Rp 7.39',
-                      item: '39 item',
-                    ),
-                    _item(
-                      image: 'items/7.png',
-                      title: 'Special Cheese Burger',
-                      price: 'Rp 8.00',
-                      item: '2 item',
-                    ),
-                    _item(
-                      image: 'items/8.png',
-                      title: 'Jumbo Cheese Burger',
-                      price: 'Rp 15.99',
-                      item: '2 item',
-                    ),
-                    _item(
-                      image: 'items/9.png',
-                      title: 'Spicy Burger',
-                      price: 'Rp 7.39',
-                      item: '12 item',
-                    ),
-                    _item(
-                      image: 'items/10.png',
-                      title: 'Special Black Burger',
-                      price: 'Rp 7.39',
-                      item: '39 item',
-                    ),
-                    _item(
-                      image: 'items/11.png',
-                      title: 'Special Cheese Burger',
-                      price: 'Rp 8.00',
-                      item: '2 item',
-                    ),
-                    _item(
-                      image: 'items/12.png',
-                      title: 'Jumbo Cheese Burger',
-                      price: 'Rp 15.99',
-                      item: '2 item',
+                    Expanded(
+                      child: GridView.count(
+                          crossAxisCount: isMobile ? 2 : 3,
+                          childAspectRatio: isPC ? (2 / 1.4) : (1 / 1.4),
+                          children: menuItems),
                     ),
                   ],
                 ),
               ),
+              Expanded(flex: 1, child: Container()),
             ],
-          ),
-        ),
-        Expanded(flex: 1, child: Container()),
-      ],
+          );
+        }
+      },
     );
+  }
+
+  Future<void> fetchData() async {
+    try {
+      // Make a GET request using Dio
+      Response response = await dio.get('http://localhost:3000/api/items');
+
+      // Assuming the response data is a list of menu items
+      List<dynamic> responseData = response.data;
+
+      // Create _item widgets based on the fetched data
+      menuItems = responseData.map((itemData) {
+        return _item(
+          image: itemData['image'],
+          title: itemData['title'],
+          price: itemData['price'],
+        );
+      }).toList();
+    } catch (error) {
+      // Handle the error
+      print('Error fetching data: $error');
+    }
   }
 
   Widget _item({
     required String image,
     required String title,
     required String price,
-    required String item,
-    VoidCallback? onAddToCart, // Callback function for the button press
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 20, bottom: 20),
@@ -139,7 +105,8 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               image: DecorationImage(
-                image: AssetImage(image),
+                image:
+                    NetworkImage(image), // Replace with your actual image URL
                 fit: BoxFit.cover,
               ),
             ),
@@ -158,95 +125,91 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                price,
+                formatCurrency(double.parse(price)),
                 style: const TextStyle(
                   color: Colors.deepOrange,
                   fontSize: 20,
                 ),
               ),
-              Text(
-                item,
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12,
-                ),
-              ),
             ],
           ),
           Container(
-              alignment: Alignment.centerRight,
-              margin: const EdgeInsets.only(top: 15),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => MainPage(
-                                  movePage: "FormMenu",
-                                )),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      primary: Colors.white, // Button background color
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                            color: Colors.deepOrange,
-                            width: 2), // Border color and width
-                        borderRadius: BorderRadius.circular(8), // Border radius
+            alignment: Alignment.centerRight,
+            margin: const EdgeInsets.only(top: 15),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MainPage(
+                          movePage: "FormMenu",
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, color: Colors.deepOrange), // Edit icon
-                      ],
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: Colors.deepOrange,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  SizedBox(width: 7),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Show a confirmation dialog
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text('Confirmation'),
-                            content: Text('Are you sure you want to delete?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // Close the dialog
-                                },
-                                child: Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  // Add your logic for delete here
-                                  // ...
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, color: Colors.deepOrange),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 7),
+                ElevatedButton(
+                  onPressed: () {
+                    // Show a confirmation dialog
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('Confirmation'),
+                          content: Text('Are you sure you want to delete?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // Add your logic for delete here
+                                // ...
 
-                                  // Close the dialog
-                                  Navigator.pop(context);
-                                },
-                                child: Text('Delete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      primary: Colors.deepOrange, // Button color
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, color: Colors.white), // Delete icon
-                      ],
-                    ),
-                  )
-                ],
-              ))
+                                // Close the dialog
+                                Navigator.pop(context);
+                              },
+                              child: Text('Delete'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.deepOrange,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.white),
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
         ],
       ),
     );

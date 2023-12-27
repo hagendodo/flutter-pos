@@ -1,16 +1,35 @@
+import 'dart:js_util';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/main.dart';
+import 'package:flutter_pos_app/models/order_data.dart';
+import 'package:flutter_pos_app/services/format_service.dart';
 import 'components/topmenu.dart';
 
 class DetailHistory extends StatefulWidget {
-  const DetailHistory({super.key});
+  final OrderData? itemMenu;
+  const DetailHistory({Key? key, this.itemMenu}) : super(key: key);
 
   @override
-  State<DetailHistory> createState() => _DetailHistoryState();
+  State<DetailHistory> createState() =>
+      _DetailHistoryState(menuDetail: itemMenu);
 }
 
 class _DetailHistoryState extends State<DetailHistory> {
   double totalValue = 0;
+  OrderData? itemMenu;
+  List<Widget> orderMenus = [];
+
+  _DetailHistoryState({OrderData? menuDetail}) {
+    itemMenu = menuDetail;
+    orderMenus = (menuDetail?.menus ?? [])
+        .map((data) => _itemOrder(
+              title: data.menuName,
+              qty: data.quantity.toString(),
+              price: data.price,
+            ))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,9 +81,9 @@ class _DetailHistoryState extends State<DetailHistory> {
             ),
             child: Column(
               children: [
-                const Text(
-                  'Atas Nama Siapa',
-                  style: TextStyle(
+                Text(
+                  itemMenu?.atasNama ?? "",
+                  style: const TextStyle(
                       fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 Container(
@@ -73,17 +92,17 @@ class _DetailHistoryState extends State<DetailHistory> {
                   width: double.infinity,
                   color: Colors.white,
                 ),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       'Kode Beli',
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     Text(
-                      'XXXX',
-                      style: TextStyle(
+                      itemMenu?.kodeBeli ?? "",
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -91,17 +110,18 @@ class _DetailHistoryState extends State<DetailHistory> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       'Tanggal',
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     Text(
-                      '15-06-2023',
-                      style: TextStyle(
+                      formatDateString(itemMenu?.tanggal.toString() ??
+                          DateTime.now().toString()),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -118,7 +138,7 @@ class _DetailHistoryState extends State<DetailHistory> {
                           fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     Text(
-                      'Rp ${totalValue.toStringAsFixed(2)}', // Format the total value as needed
+                      formatCurrency(itemMenu?.totalHarga ?? 0),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -132,38 +152,7 @@ class _DetailHistoryState extends State<DetailHistory> {
           const SizedBox(height: 20),
           Expanded(
             child: ListView(
-              children: [
-                _itemOrder(
-                  image: 'items/1.png',
-                  title: 'Orginal Burger',
-                  qty: '2',
-                  price: 5.99,
-                ),
-                _itemOrder(
-                  image: 'items/2.png',
-                  title: 'Double Burger',
-                  qty: '3',
-                  price: 10.99,
-                ),
-                _itemOrder(
-                  image: 'items/6.png',
-                  title: 'Special Black Burger',
-                  qty: '2',
-                  price: 8.00,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-                _itemOrder(
-                  image: 'items/4.png',
-                  title: 'Special Cheese Burger',
-                  qty: '2',
-                  price: 12.99,
-                ),
-              ],
+              children: orderMenus,
             ),
           ),
         ],
@@ -172,7 +161,6 @@ class _DetailHistoryState extends State<DetailHistory> {
   }
 
   Widget _itemOrder({
-    required String image,
     required String title,
     required String qty,
     required double price,
@@ -199,7 +187,16 @@ class _DetailHistoryState extends State<DetailHistory> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Rp $price',
+                  'Harga Menu: ${formatCurrency(price)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white54,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  formatCurrency(price * int.parse(qty)),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
