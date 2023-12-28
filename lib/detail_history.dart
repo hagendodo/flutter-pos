@@ -1,5 +1,3 @@
-import 'dart:js_util';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/main.dart';
 import 'package:flutter_pos_app/models/order_data.dart';

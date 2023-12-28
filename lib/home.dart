@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
                       child: _topMenu(
                         title: 'Point Of Sale',
                         subTitle: 'Cabang X',
-                        action: _search(),
+                        action: Container(),
                       ),
                     ),
                     Expanded(
@@ -74,6 +74,7 @@ class _HomePageState extends State<HomePage> {
       // Create _item widgets based on the fetched data
       menuItems = responseData.map((itemData) {
         return _item(
+          id: itemData['id'],
           image: itemData['image'],
           title: itemData['title'],
           price: itemData['price'],
@@ -85,7 +86,29 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> deleteData(String itemId) async {
+    try {
+      // Make a DELETE request using Dio
+      Response response =
+          await dio.delete('http://localhost:3000/api/items/$itemId');
+
+      if (response.statusCode != 200) {
+        print('Error deleting item. Status code: ${response.statusCode}');
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const MainPage(
+                  movePage: "Home",
+                )),
+      );
+    } catch (error) {
+      print('Error deleting data: $error');
+    }
+  }
+
   Widget _item({
+    required String id,
     required String image,
     required String title,
     required String price,
@@ -185,11 +208,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             TextButton(
                               onPressed: () {
-                                // Add your logic for delete here
-                                // ...
-
-                                // Close the dialog
-                                Navigator.pop(context);
+                                deleteData(id);
                               },
                               child: Text('Delete'),
                             ),

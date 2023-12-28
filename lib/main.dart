@@ -3,6 +3,7 @@ import 'package:flutter_pos_app/detail_history.dart';
 import 'package:flutter_pos_app/form_menu.dart';
 import 'package:flutter_pos_app/history.dart';
 import 'package:flutter_pos_app/login.dart';
+import 'package:flutter_pos_app/manage_accounts.dart';
 import 'package:flutter_pos_app/models/order_data.dart';
 import 'package:flutter_pos_app/order.dart';
 import 'package:flutter_pos_app/home.dart';
@@ -71,7 +72,8 @@ class _MainPageState extends State<MainPage> {
         return Report();
       case 'Settings':
         return Settings();
-
+      case 'ManageAccounts':
+        return ManageAccounts();
       default:
         return const HomePage();
     }
@@ -118,7 +120,8 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: pageActive == "Login" ||
               pageActive == "DetailHistory" ||
               pageActive == "Register" ||
-              pageActive == "FormMenu"
+              pageActive == "FormMenu" ||
+              pageActive == "ManageAccounts"
           ? null
           : _bottomMenu(),
     );

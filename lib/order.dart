@@ -4,6 +4,7 @@ import 'package:flutter_pos_app/main.dart';
 import 'package:flutter_pos_app/models/menu_item.dart';
 import 'package:flutter_pos_app/models/order_data.dart';
 import 'package:flutter_pos_app/services/format_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shortid/shortid.dart';
 import 'components/topmenu.dart';
 import 'package:input_quantity/input_quantity.dart';
@@ -22,8 +23,35 @@ class _CheckoutState extends State<Checkout> {
   Dio dio = Dio();
   final _nameController = TextEditingController();
 
+  Map<String, dynamic> userData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData(userData);
+  }
+
+  Future<void> _loadUserData(users) async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+
+    setState(() {
+      users = {
+        'authStatus': preferences.getString('authStatus'),
+        'userId': preferences.getString('userId'),
+        'username': preferences.getString('username'),
+        'role': preferences.getString('role'),
+        'kodeToko': preferences.getString('kodeToko'),
+        'namaToko': preferences.getString('namaToko'),
+        'kodeCabang': preferences.getString('kodeCabang'),
+        'namaCabang': preferences.getString('namaCabang'),
+      };
+    });
+  }
+
   void calculateTotal() {
     double total = 0.0;
+
+    print(userData.toString());
 
     for (var menuItem in menuItems) {
       total += menuItem.quantity * menuItem.price;

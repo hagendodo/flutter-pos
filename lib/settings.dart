@@ -21,7 +21,7 @@ class _SettingsState extends State<Settings> {
                 context,
                 MaterialPageRoute(
                     builder: (context) => const MainPage(
-                          movePage: "Settings",
+                          movePage: "ManageAccounts",
                         )),
               );
             },
@@ -194,6 +194,36 @@ class _SettingsState extends State<Settings> {
             ],
           ),
         ),
+      ),
+      Container(
+        margin: const EdgeInsets.only(top: 20),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const MainPage(
+                            movePage: "Login",
+                          )),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                primary: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: const BorderSide(
+                    color: Colors.deepOrange,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.deepOrange),
+                ],
+              ))
+        ]),
       )
     ]);
   }

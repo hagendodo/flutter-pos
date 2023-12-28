@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pos_app/main.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -7,6 +9,133 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+  final Dio dio = Dio();
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+
+  TextEditingController kodeController = TextEditingController();
+  TextEditingController usernameController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+
+  _loginProcess() async {
+    String kode = kodeController.text.trim();
+    String username = usernameController.text.trim();
+    String password = passwordController.text.trim();
+
+    if (kode.isEmpty || username.isEmpty || password.isEmpty) {
+      _showValidationFailedDialog("All fields are required.");
+      return;
+    }
+
+    try {
+      Response response = await dio.post(
+        'http://localhost:3000/api/login',
+        data: {
+          'kode': kode,
+          'username': username,
+          'password': password,
+        },
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = response.data;
+        final String id = responseData['id'];
+        final Map<String, dynamic> userData = responseData['data'];
+
+        await _storeUserData(id, userData);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainPage(
+              movePage: "Order",
+            ),
+          ),
+        );
+      } else {
+        _showLoginFailedDialog();
+      }
+    } catch (error) {
+      _showLoginFailedDialog();
+      print('error: $error');
+    }
+  }
+
+  void _showValidationFailedDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Validation Failed"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _storeUserData(String id, Map<String, dynamic> userData) async {
+    final SharedPreferences preferences = await _prefs;
+    await preferences.setString('authStatus', 'logged');
+    await preferences.setString('userId', id);
+    await preferences.setString('username', userData['username']);
+    await preferences.setString('role', userData['role']);
+    await preferences.setString('kodeToko', userData['kodeToko']);
+    await preferences.setString('namaToko', userData['namaToko']);
+    await preferences.setString('kodeCabang', userData['kodeCabang'] ?? "");
+    await preferences.setString('namaCabang', userData['namaCabang'] ?? "");
+  }
+
+  void _showLoginFailedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Login Failed"),
+          content: Text("Invalid username or password. Please try again."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Function to show an alert when login fails
+  void _showLoginFailedServerDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Server Error"),
+          content: Text("Server Error! Please try again later."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -16,7 +145,7 @@ class _LoginState extends State<Login> {
         boxShadow: const [
           BoxShadow(
             color: Colors.white,
-            offset: Offset(0, 1), // Negative y offset for top shadow
+            offset: Offset(0, 1),
             blurRadius: 1,
           ),
         ],
@@ -32,14 +161,15 @@ class _LoginState extends State<Login> {
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 48,
-                fontWeight: FontWeight.bold, // Adjust the font weight as needed
+                fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 32),
             TextField(
+              controller: kodeController,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Kode Toko',
+                hintText: 'Kode Cabang / Toko (untuk admin)',
                 hintStyle: TextStyle(color: Colors.white54),
                 enabledBorder: UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.white),
@@ -48,6 +178,7 @@ class _LoginState extends State<Login> {
             ),
             SizedBox(height: 16),
             TextField(
+              controller: usernameController,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Username',
@@ -59,6 +190,7 @@ class _LoginState extends State<Login> {
             ),
             SizedBox(height: 16),
             TextField(
+              controller: passwordController,
               obscureText: true,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
@@ -72,13 +204,7 @@ class _LoginState extends State<Login> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => MainPage(
-                            movePage: "Order",
-                          )),
-                );
+                _loginProcess();
               },
               child: Text('Login'),
               style: ElevatedButton.styleFrom(
@@ -89,13 +215,13 @@ class _LoginState extends State<Login> {
             SizedBox(height: 28),
             GestureDetector(
               onTap: () {
-                // Navigate to MainPage when clicked
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => MainPage(
-                            movePage: "Register",
-                          )),
+                    builder: (context) => MainPage(
+                      movePage: "Register",
+                    ),
+                  ),
                 );
               },
               child: Container(
